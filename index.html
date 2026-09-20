@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Bakchodi app</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+
+    <style>
+        :root {
+            --bottom-nav-bottom: 75px; 
+            --bottom-nav-height: 75px;
+            --app-bg: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-card-bg: rgba(255, 255, 255, 0.92);
+            --glass-border: rgba(255, 255, 255, 0.95);
+            --glass-blur: blur(30px);
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Roboto, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--font-family);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: #f1f5f9 !important;
+            background-image: var(--app-bg) !important;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: var(--glass-card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
+            padding: 24px 20px;
+            width: 100%;
+            color: var(--text-primary);
+        }
+
+        #login-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100% - 40px);
+            max-width: 400px;
+            z-index: 10;
+            display: none;
+        }
+
+        .app-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 22px;
+            letter-spacing: -0.5px;
+            color: #0f172a;
+        }
+
+        .input-group {
+            margin-bottom: 14px;
+            position: relative;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #334155;
+            font-size: 16px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 14px 14px 14px 48px;
+            background: rgba(241, 245, 249, 0.7);
+            border: 1px solid rgba(203, 213, 225, 0.6);
+            border-radius: 16px;
+            color: #0f172a;
+            font-size: 15px;
+            outline: none;
+            user-select: text;
+        }
+
+        .input-field::placeholder { color: #64748b; }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
+        .btn-secondary { background: rgba(241, 245, 249, 0.9); color: #0f172a; border: 1px solid rgba(203, 213, 225, 0.6); }
+
+        .footer-option { text-align: center; margin-top: 18px; font-size: 14px; color: #334155; }
+        .link-btn { color: #0f172a; font-weight: 700; cursor: pointer; text-decoration: underline; margin-left: 5px; }
+
+        .toast {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 22px;
+            border-radius: 30px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 5000;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            opacity: 0; visibility: hidden;
+            transition: all 0.2s ease;
+            padding: 20px;
+        }
+
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-card { transform: scale(0.92); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-width: 380px; }
+        .modal-overlay.active .modal-card { transform: scale(1); }
+        .btn-row { display: flex; gap: 12px; margin-top: 15px; }
+
+        #app-viewport {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 50;
+            background: var(--app-bg);
+        }
+
+        .app-header {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 70px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            z-index: 60;
+        }
+
+        .app-header .logo { font-size: 20px; font-weight: 700; color: #0f172a; }
+        
+        .icon-btn {
+            background: rgba(241, 245, 249, 0.9);
+            border: 1px solid rgba(203, 213, 225, 0.6);
+            color: #0f172a;
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center; justify-content: center;
+            cursor: pointer; font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .app-content {
+            position: absolute;
+            top: 70px;
+            bottom: calc(var(--bottom-nav-bottom) + var(--bottom-nav-height) + 15px);
+            width: 100%;
+            overflow-y: auto;
+            padding: 20px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .bottom-nav {
+            position: absolute;
+            bottom: var(--bottom-nav-bottom);
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 40px);
+            max-width: 400px;
+            height: var(--bottom-nav-height);
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 38px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            z-index: 60;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            width: 40%;
+            text-align: center;
+        }
+
+        .nav-item i { font-size: 22px; }
+        .nav-item.active { color: #0f172a; font-weight: 700; }
+
+        .tab-page { display: none; height: 100%; }
+        .tab-page.active { display: block; }
+
+        .group-card {
+            background: var(--glass-card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            color: #0f172a;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+
+        .group-avatar {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: rgba(241, 245, 249, 0.9);
+            border: 1px solid rgba(203, 213, 225, 0.6);
+            display: flex;
+            align-items: center; justify-content: center;
+            font-size: 18px;
+            color: #0f172a;
+        }
+
+        .profile-container {
+            position: relative;
+            background: var(--glass-card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            overflow: hidden;
+            padding: 0 0 25px 0;
+            color: #0f172a;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+        }
+
+        .profile-banner {
+            width: 100%;
+            height: 140px;
+            background-color: #e2e8f0;
+            background-size: cover;
+            background-position: center;
+            border: none;
+            outline: none;
+        }
+
+        .profile-avatar {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background-color: #ffffff; 
+            border: 3px solid #ffffff;
+            margin: -45px auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+            position: relative;
+            z-index: 10;
+        }
+
+        .profile-info { text-align: center; padding: 0 20px; }
+        .profile-info h3 { font-size: 22px; font-weight: 700; margin-bottom: 15px; color: #0f172a; }
+
+        .name-card-box {
+            background: rgba(241, 245, 249, 0.8);
+            border: 1px solid rgba(203, 213, 225, 0.6);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 12px;
+            color: #0f172a;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #334155;
+            padding: 4px 0;
+        }
+
+        #chat-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: var(--app-bg);
+            z-index: 150;
+        }
+
+        .chat-header {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 70px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            z-index: 160;
+            color: #0f172a;
+        }
+
+        .chat-title-container {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 17px;
+            font-weight: 700;
+            text-align: center;
+            width: 60%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #0f172a;
+        }
+
+        .chat-messages-area {
+            position: absolute;
+            top: 70px;
+            bottom: calc(var(--bottom-nav-bottom) + var(--bottom-nav-height) + 15px);
+            width: 100%;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .chat-input-bar-container {
+            position: absolute;
+            bottom: var(--bottom-nav-bottom);
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 40px);
+            max-width: 400px;
+            height: var(--bottom-nav-height);
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 38px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px 0 18px;
+            gap: 8px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            z-index: 160;
+        }
+
+        .chat-input-bar-container input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #0f172a;
+            font-size: 14px;
+            user-select: text;
+        }
+
+        .chat-input-bar-container input::placeholder { color: #64748b; }
+
+        .chat-bubble {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            position: relative;
+            cursor: pointer;
+            user-select: text;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+        }
+
+        .chat-bubble .sender-name {
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .chat-bubble.me {
+            align-self: flex-end;
+            background: rgba(15, 23, 42, 0.95);
+            color: #ffffff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-bubble.me .sender-name { color: #94a3b8; }
+
+        .chat-bubble.opp {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            color: #0f172a;
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-bubble.opp .sender-name { color: #334155; }
+        
+        .mic-recording {
+            animation: pulse-mic 1s infinite;
+            color: #ef4444 !important;
+        }
+        @keyframes pulse-mic {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast" class="toast">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="toast-text">Notification</span>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="glass-card">
+        <h2 class="app-title" id="login-screen-app-title">Welcome</h2>
+        
+        <div class="input-group">
+            <i class="fa-regular fa-envelope"></i>
+            <input type="email" id="login-email" class="input-field" placeholder="Email Address">
+        </div>
+
+        <div class="input-group">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="login-password" class="input-field" placeholder="Password">
+        </div>
+
+        <div style="margin-top: 5px;">
+            <button class="btn-primary" style="width: 100%; font-size: 14px;" onclick="handleLogin()">
+                <span>Log In</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <div class="footer-option">
+            Don't have an account? 
+            <span class="link-btn" onclick="openRegisterModal()">Create New</span>
+        </div>
+    </div>
+
+    <!-- REGISTER MODAL -->
+    <div id="register-modal" class="modal-overlay">
+        <div class="glass-card modal-card">
+            <h2 class="app-title" style="font-size: 22px;">Create Account</h2>
+
+            <div class="input-group">
+                <i class="fa-regular fa-user"></i>
+                <input type="text" id="reg-username" class="input-field" placeholder="Username">
+            </div>
+
+            <div class="input-group">
+                <i class="fa-regular fa-envelope"></i>
+                <input type="email" id="reg-email" class="input-field" placeholder="Email Address">
+            </div>
+
+            <div class="input-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="reg-password" class="input-field" placeholder="Password">
+            </div>
+
+            <div class="btn-row">
+                <button class="btn-primary btn-secondary" onclick="closeRegisterModal()">Cancel</button>
+                <button class="btn-primary" onclick="handleRegister()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP VIEWPORT -->
+    <div id="app-viewport">
+        <div class="app-header">
+            <div class="logo" id="app-header-logo-text">Bakchodi app</div>
+            <div class="icon-btn" id="menu-trigger" style="display: none;" onclick="openMenuModal()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+        </div>
+
+        <div class="app-content">
+            <div id="tab-home" class="tab-page active">
+                <div id="group-list"></div>
+            </div>
+
+            <div id="tab-profile" class="tab-page">
+                <div class="profile-container">
+                    <div class="profile-banner"></div>
+                    <div class="profile-avatar" id="user-avatar">👤</div>
+                    <div class="profile-info">
+                        <h3 id="prof-username">User Name</h3>
+                        <button class="btn-primary btn-secondary" onclick="openEditProfileModal()">Edit Profile</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" id="nav-home" onclick="switchTab('home')">
+                <i class="fa-solid fa-house"></i>
+                <span>Home</span>
+            </div>
+            <div class="nav-item" id="nav-profile" onclick="switchTab('profile')">
+                <i class="fa-regular fa-user"></i>
+                <span>Profile</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GROUP SECRET KEY INPUT -->
+    <div id="group-key-modal" class="modal-overlay" style="z-index: 450;">
+        <div class="glass-card modal-card">
+            <h2 class="app-title" style="font-size: 20px;">Enter Secret Key</h2>
+            <div class="input-group">
+                <i class="fa-solid fa-key"></i>
+                <input type="password" id="group-secret-key-input" class="input-field" placeholder="Enter Key">
+            </div>
+            <div class="btn-row">
+                <button class="btn-primary btn-secondary" onclick="closeGroupKeyModal()">Cancel</button>
+                <button class="btn-primary" onclick="handleVerifyGroupKey()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT GROUP NAME -->
+    <div id="edit-group-name-modal" class="modal-overlay" style="z-index: 460;">
+        <div class="glass-card modal-card">
+            <h2 class="app-title" style="font-size: 20px;">Change Group Name</h2>
+            <div class="input-group">
+                <i class="fa-regular fa-pen-to-square"></i>
+                <input type="text" id="new-group-name-input" class="input-field" placeholder="Change Name">
+            </div>
+            <div class="btn-row">
+                <button class="btn-primary btn-secondary" onclick="closeEditGroupNameModal()">Cancel</button>
+                <button class="btn-primary" onclick="handleSaveNewGroupName()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IN-GROUP CHAT SCREEN -->
+    <div id="chat-screen">
+        <div class="chat-header">
+            <div class="icon-btn" onclick="closeChatRoom()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+            <div class="chat-title-container">
+                <h3 id="chat-group-title" style="font-size: 17px; font-weight: 700;">Group Name</h3>
+            </div>
+            <div style="width: 42px;"></div>
+        </div>
+
+        <div class="chat-messages-area" id="chat-messages-area"></div>
+
+        <div class="chat-input-bar-container">
+            <input type="text" id="chat-text-input" placeholder="Type a message..." oninput="handleTypingDraft(this.value)">
+            
+            <div class="icon-btn" id="mic-btn" style="background: rgba(241, 245, 249, 0.9); color: #0f172a; width: 42px; height: 42px;" onclick="toggleVoiceRecording()" title="Hold/Tap to record voice">
+                <i class="fa-solid fa-microphone" id="mic-icon"></i>
+            </div>
+
+            <div class="icon-btn" style="background: #0f172a; color: #fff; width: 42px; height: 42px;" onclick="handleSendMessage()">
+                <i class="fa-solid fa-paper-plane"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: MESSAGE OPTIONS -->
+    <div id="message-options-modal" class="modal-overlay">
+        <div class="glass-card modal-card">
+            <h2 class="app-title" style="font-size: 18px;">Options</h2>
+            <div id="msg-option-buttons">
+                <button class="btn-primary btn-secondary" id="copy-option-btn" style="margin-bottom:10px;" onclick="handleCopyMessageText()"><i class="fa-solid fa-copy"></i> Copy Text</button>
+                <button class="btn-primary btn-secondary" onclick="handleDeleteMessage()"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>
+            <button class="btn-primary btn-secondary" style="margin-top: 10px;" onclick="closeMessageOptionsModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- EDIT PROFILE MODAL -->
+    <div id="edit-profile-modal" class="modal-overlay">
+        <div class="glass-card modal-card">
+            <h2 class="app-title" style="font-size: 20px;">Edit Profile</h2>
+            
+            <div class="name-card-box">
+                <div style="margin-bottom: 12px; font-size: 14px; color: #334155;">
+                    Current Name: <b id="edit-name-display" style="color: #0f172a; font-size: 16px;">User</b>
+                </div>
+
+                <div class="input-group" style="margin-bottom: 0;">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    <input type="text" id="inline-new-name-input" class="input-field" placeholder="Change Name">
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn-primary btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
+                <button class="btn-primary" onclick="handleSaveProfile()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MENU & SETTINGS -->
+    <div id="menu-modal" class="modal-overlay">
+        <div class="glass-card modal-card">
+            <h2 class="app-title" style="font-size: 20px;">Settings</h2>
+
+            <button class="btn-primary btn-secondary" style="margin-bottom: 10px;" onclick="handleLogout()">
+                <i class="fa-solid fa-right-from-bracket"></i> Log Out
+            </button>
+
+            <button class="btn-primary btn-secondary" style="margin-bottom: 10px;" onclick="openDeleteAccountModal()">
+                <i class="fa-solid fa-trash"></i> Delete Account
+            </button>
+
+            <button class="btn-primary btn-secondary" style="margin-top: 5px;" onclick="closeMenuModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- DELETE USER ACCOUNT MODAL -->
+    <div id="delete-account-modal" class="modal-overlay" style="z-index: 520;">
+        <div class="glass-card modal-card">
+            <h2 class="app-title" style="font-size: 18px;">Delete Account</h2>
+            <div class="input-group" style="margin-top: 15px;">
+                <i class="fa-regular fa-envelope"></i>
+                <input type="email" id="del-email" class="input-field" placeholder="Email">
+            </div>
+            <div class="input-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="del-password" class="input-field" placeholder="Password">
+            </div>
+            <div class="btn-row">
+                <button class="btn-primary btn-secondary" onclick="closeDeleteAccountModal()">Cancel</button>
+                <button class="btn-primary btn-secondary" onclick="handleDeleteAccount()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Secure Server-side reference simulation for secret key validation
+        const _ENCODED_KEY = "NTAwNTIwMDk=";
+        function getSecureKey() {
+            try {
+                return atob(_ENCODED_KEY);
+            } catch(e) {
+                showToast("Security verification error!");
+                return "";
+            }
+        }
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0x5SbDIgRjuFByelzyMNZ1bUnZIJGwB4",
+            authDomain: "vijay-5005.firebaseapp.com",
+            databaseURL: "https://vijay-5005-default-rtdb.firebaseio.com",
+            projectId: "vijay-5005",
+            storageBucket: "vijay-5005.firebasestorage.app",
+            messagingSenderId: "641499856810",
+            appId: "1:641499856810:web:684a209ffebf1bf88835d3"
+        };
+        
+        let auth = null;
+        let db = null;
+        let messaging = null;
+        const VAPID_KEY = "BDuKEjHuDPhRd6EQdz6PMz1Ta8ObDWxvH_EwYN37ZlXHkIyCKGi7fFWRqGF9AhZ0Y_ymgsMs6nm63-GFgzDEqGo";
+
+        try {
+            if (firebaseConfig.databaseURL) {
+                firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.database();
+                if (firebase.messaging.isSupported()) {
+                    messaging = firebase.messaging();
+                }
+            }
+        } catch(e) {
+            console.error("Firebase init error:", e);
+            showToast("Failed to connect with server!");
+        }
+
+        const DRAFT_TEXT_KEY = "BAKCHODI_CHAT_DRAFT_TEXT_";
+        const LOCAL_USER_KEY = "BAKCHODI_LOCAL_USER_CACHE";
+
+        let GROUPS_DATA = {
+            "dark_member": { name: "Dark Member" }
+        };
+        let currentUser = null; 
+        let selectedGroupId = "";
+        let messagesStore = []; 
+        let activeMessageId = null;
+        let targetEditGroupId = "";
+
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordStartTime = 0;
+
+        let activeAudio = null;
+        let activePlayIcon = null;
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        function initNotifications() {
+            if (!messaging) return;
+            
+            Notification.requestPermission().then((permission) => {
+                if (permission === 'granted') {
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('firebase-messaging-sw.js')
+                        .then((registration) => {
+                            messaging.useServiceWorker(registration);
+                            return messaging.getToken({ vapidKey: VAPID_KEY });
+                        })
+                        .then((token) => {
+                            if (token && currentUser) {
+                                const userCleanEmail = currentUser.email.replace(/[.#$\[\]]/g, "_");
+                                db.ref('fcmTokens/' + userCleanEmail).set(token);
+                            }
+                        })
+                        .catch((err) => {
+                            console.error("Error details:", err);
+                        });
+                    }
+                }
+            });
+
+            messaging.onMessage((payload) => {
+                showToast(payload.notification.title + ": " + payload.notification.body);
+            });
+        }
+
+        function fetchUserDataAndAuthenticate(firebaseUser, callback) {
+            currentUser = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                username: firebaseUser.email.split('@')[0]
+            };
+            localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(currentUser));
+            postLoginSetup();
+            if (callback) callback();
+
+            if (db) {
+                db.ref('users/' + firebaseUser.uid).once('value').then((snapshot) => {
+                    let userData = snapshot.val();
+                    if (userData) {
+                        if (userData.username) currentUser.username = userData.username;
+                        if (userData.email) currentUser.email = userData.email;
+                        localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(currentUser));
+                        updateProfileUI();
+                    }
+                }).catch((err) => {
+                    console.error("Error details:", err);
+                });
+            }
+        }
+
+        function postLoginSetup() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-viewport').style.display = 'block';
+            switchTab('home');
+            listenToGroups();
+            updateProfileUI();
+            initNotifications();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const cachedUser = localStorage.getItem(LOCAL_USER_KEY);
+            if (cachedUser) {
+                try {
+                    currentUser = JSON.parse(cachedUser);
+                    postLoginSetup(); 
+                } catch(e) {
+                    console.error("Error details:", e);
+                }
+            }
+
+            if (auth) {
+                auth.onAuthStateChanged((firebaseUser) => {
+                    if (firebaseUser) {
+                        if (!currentUser || currentUser.uid !== firebaseUser.uid || currentUser.email !== firebaseUser.email) {
+                            fetchUserDataAndAuthenticate(firebaseUser);
+                        }
+                    } else {
+                        currentUser = null;
+                        localStorage.removeItem(LOCAL_USER_KEY);
+                        document.getElementById('app-viewport').style.display = 'none';
+                        document.getElementById('login-email').value = '';
+                        document.getElementById('login-password').value = '';
+                        document.getElementById('login-screen').style.display = 'block';
+                    }
+                });
+            } else if (!cachedUser) {
+                document.getElementById('login-screen').style.display = 'block';
+            }
+        });
+
+        function openRegisterModal() {
+            document.getElementById('reg-username').value = '';
+            document.getElementById('reg-email').value = '';
+            document.getElementById('reg-password').value = '';
+            document.getElementById('register-modal').classList.add('active');
+        }
+
+        function closeRegisterModal() { 
+            document.getElementById('reg-username').value = '';
+            document.getElementById('reg-email').value = '';
+            document.getElementById('reg-password').value = '';
+            document.getElementById('register-modal').classList.remove('active'); 
+        }
+
+        function handleRegister() {
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim().toLowerCase();
+            const password = document.getElementById('reg-password').value.trim();
+
+            if (!username || !email || !password) {
+                showToast("Please fill all fields!");
+                return;
+            }
+
+            if (!auth) {
+                showToast("Firebase Auth not initialized!");
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    if (db) {
+                        db.ref('users/' + user.uid).set({
+                            username: username,
+                            email: email
+                        }).catch((err) => {
+                            console.error("Error details:", err);
+                            showToast("Failed to save user data!");
+                        });
+                    }
+
+                    auth.signOut().catch((err) => {
+                        console.error("Error details:", err);
+                    });
+                    closeRegisterModal();
+                    
+                    document.getElementById('login-email').value = '';
+                    document.getElementById('login-password').value = '';
+
+                    showToast("Account created successfully! Please log in.");
+                })
+                .catch((error) => {
+                    console.error("Error details:", error);
+                    showToast(error.message || "Registration failed!");
+                });
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value.trim();
+
+            if (!email || !password) {
+                showToast("Please enter email and password!");
+                return;
+            }
+
+            if (!auth) {
+                showToast("Firebase Auth not initialized!");
+                return;
+            }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    fetchUserDataAndAuthenticate(userCredential.user, () => {
+                        showToast("Logged in successfully!");
+                    });
+                })
+                .catch((error) => {
+                    console.error("Error details:", error);
+                    showToast("Invalid Email or Password!");
+                });
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.tab-page').forEach(page => page.classList.remove('active'));
+
+            document.getElementById(`nav-${tabName}`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            const menuBtn = document.getElementById('menu-trigger');
+            menuBtn.style.display = (tabName === 'profile') ? 'flex' : 'none';
+        }
+
+        function listenToGroups() {
+            if (!db) {
+                renderGroupList();
+                return;
+            }
+
+            db.ref('groups').on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (val) {
+                    GROUPS_DATA = val;
+                } else {
+                    GROUPS_DATA = { "dark_member": { name: "Dark Member" } };
+                    db.ref('groups').set(GROUPS_DATA).catch((err) => {
+                        console.error("Error details:", err);
+                        showToast("Failed to initialize groups!");
+                    });
+                }
+                renderGroupList();
+            }, (err) => {
+                console.error("Error details:", err);
+                showToast("Network error while loading groups!");
+            });
+        }
+
+        function renderGroupList() {
+            const groupList = document.getElementById('group-list');
+            groupList.innerHTML = '';
+
+            for (let gId in GROUPS_DATA) {
+                const group = GROUPS_DATA[gId];
+                const card = document.createElement('div');
+                card.className = 'group-card';
+                card.innerHTML = `
+                    <div class="group-avatar"><i class="fa-solid fa-users"></i></div>
+                    <div>
+                        <h4 style="font-size: 15px; font-weight: 600; color: #0f172a;">${group.name}</h4>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    selectedGroupId = gId;
+                    openChatRoom();
+                });
+
+                let timer = null;
+                const startHold = () => {
+                    timer = setTimeout(() => {
+                        targetEditGroupId = gId;
+                        openGroupKeyModal();
+                    }, 600);
+                };
+                const clearHold = () => { if (timer) clearTimeout(timer); };
+
+                card.addEventListener('mousedown', startHold);
+                card.addEventListener('touchstart', startHold);
+                card.addEventListener('mouseup', clearHold);
+                card.addEventListener('mouseleave', clearHold);
+                card.addEventListener('touchend', clearHold);
+
+                groupList.appendChild(card);
+            }
+        }
+
+        function openGroupKeyModal() {
+            document.getElementById('group-secret-key-input').value = '';
+            document.getElementById('group-key-modal').classList.add('active');
+        }
+
+        function closeGroupKeyModal() {
+            document.getElementById('group-secret-key-input').value = '';
+            document.getElementById('group-key-modal').classList.remove('active');
+        }
+
+        function handleVerifyGroupKey() {
+            const keyVal = document.getElementById('group-secret-key-input').value.trim();
+            if (keyVal === getSecureKey()) {
+                closeGroupKeyModal();
+                openEditGroupNameModal();
+            } else {
+                showToast("Incorrect Secret Key!");
+            }
+        }
+
+        function openEditGroupNameModal() {
+            document.getElementById('new-group-name-input').value = '';
+            document.getElementById('edit-group-name-modal').classList.add('active');
+        }
+
+        function closeEditGroupNameModal() {
+            document.getElementById('new-group-name-input').value = '';
+            document.getElementById('edit-group-name-modal').classList.remove('active');
+            targetEditGroupId = "";
+        }
+
+        function handleSaveNewGroupName() {
+            const newName = document.getElementById('new-group-name-input').value.trim();
+            if (!newName) {
+                showToast("Please enter a group name!");
+                return;
+            }
+
+            if (db && targetEditGroupId) {
+                db.ref('groups/' + targetEditGroupId).update({ name: newName }).then(() => {
+                    showToast("Group name changed successfully!");
+                    closeEditGroupNameModal();
+                }).catch((error) => {
+                    console.error("Error details:", error);
+                    showToast("Failed to update name!");
+                });
+            } else {
+                if (GROUPS_DATA[targetEditGroupId]) {
+                    GROUPS_DATA[targetEditGroupId].name = newName;
+                    renderGroupList();
+                }
+                showToast("Group name changed successfully!");
+                closeEditGroupNameModal();
+            }
+        }
+
+        function openChatRoom() {
+            document.getElementById('chat-group-title').innerText = GROUPS_DATA[selectedGroupId] ? GROUPS_DATA[selectedGroupId].name : "Group Name";
+            document.getElementById('chat-screen').style.display = 'block';
+            
+            const savedDraft = localStorage.getItem(DRAFT_TEXT_KEY + selectedGroupId) || "";
+            document.getElementById('chat-text-input').value = savedDraft;
+
+            if (db) {
+                db.ref("chats/" + selectedGroupId).on("value", (snapshot) => {
+                    const data = snapshot.val();
+                    messagesStore = [];
+                    if (data) {
+                        const now = Date.now();
+                        const twentyFourHours = 24 * 60 * 60 * 1000;
+                        Object.keys(data).forEach(key => {
+                            const msg = data[key];
+                            if (msg.timestamp && (now - msg.timestamp <= twentyFourHours)) {
+                                messagesStore.push({ id: key, ...msg });
+                            } else if (msg.timestamp) {
+                                // Auto-cleanup expired messages from database to optimize space
+                                db.ref("chats/" + selectedGroupId + "/" + key).remove().catch(err => console.error(err));
+                            }
+                        });
+                    }
+                    renderMessages();
+                }, (err) => {
+                    console.error("Error details:", err);
+                    showToast("Failed to sync messages!");
+                });
+            } else {
+                renderMessages();
+            }
+        }
+
+        function closeChatRoom() {
+            if (db && selectedGroupId) {
+                db.ref("chats/" + selectedGroupId).off();
+            }
+            if (activeAudio) {
+                activeAudio.pause();
+                activeAudio = null;
+            }
+            document.getElementById('chat-screen').style.display = 'none';
+        }
+
+        function handleTypingDraft(textVal) {
+            if (selectedGroupId) {
+                localStorage.setItem(DRAFT_TEXT_KEY + selectedGroupId, textVal);
+            }
+        }
+
+        function renderMessages() {
+            const area = document.getElementById('chat-messages-area');
+            area.innerHTML = '';
+
+            messagesStore.forEach((msg) => {
+                const bubble = document.createElement('div');
+                const isMe = currentUser && (msg.senderEmail === currentUser.email);
+                bubble.className = `chat-bubble ${isMe ? 'me' : 'opp'}`;
+
+                let senderHTML = !isMe ? `<div class="sender-name">${msg.senderName || 'User'}</div>` : '';
+
+                if (msg.type === 'text') {
+                    bubble.innerHTML = `${senderHTML}<div>${msg.text}</div>`;
+                } else if (msg.type === 'audio') {
+                    let durationText = msg.duration || "0:00";
+                    bubble.innerHTML = `
+                        ${senderHTML}
+                        <div style="display: flex; align-items: center; gap: 10px; min-width: 160px;">
+                            <i class="fa-solid fa-play audio-play-icon" style="font-size: 18px; cursor: pointer;" onclick="togglePlayAudio('${msg.audioData}', this)"></i>
+                            <div style="font-size: 12px; font-weight: 500;">Voice (${durationText}) 🎤</div>
+                        </div>
+                    `;
+                }
+
+                let timer = null;
+                const startHold = () => { timer = setTimeout(() => { openMessageOptionsModal(msg.id, msg.type); }, 500); };
+                const clearHold = () => { if (timer) clearTimeout(timer); };
+
+                bubble.addEventListener('mousedown', startHold);
+                bubble.addEventListener('touchstart', startHold);
+                bubble.addEventListener('mouseup', clearHold);
+                bubble.addEventListener('mouseleave', clearHold);
+                bubble.addEventListener('touchend', clearHold);
+
+                area.appendChild(bubble);
+            });
+
+            area.scrollTop = area.scrollHeight;
+        }
+
+        function toggleVoiceRecording() {
+            const micIcon = document.getElementById('mic-icon');
+
+            if (!isRecording) {
+                navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    recordStartTime = Date.now();
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const durationSec = Math.round((Date.now() - recordStartTime) / 1000);
+                        const mins = Math.floor(durationSec / 60);
+                        const secs = durationSec % 60;
+                        const formattedDuration = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = () => {
+                            sendAudioMessage(reader.result, formattedDuration);
+                        };
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micIcon.className = "fa-solid fa-microphone mic-recording";
+                    showToast("Recording started...");
+                }).catch((error) => {
+                    console.error("Error details:", error);
+                    showToast("Microphone access denied!");
+                });
+            } else {
+                if (mediaRecorder) {
+                    mediaRecorder.stop();
+                }
+                isRecording = false;
+                micIcon.className = "fa-solid fa-microphone";
+                showToast("Recording sent!");
+            }
+        }
+
+        function sendAudioMessage(base64Data, durationStr) {
+            if (!currentUser) return;
+            const newMsg = {
+                type: 'audio',
+                senderEmail: currentUser.email,
+                senderName: currentUser.username,
+                audioData: base64Data,
+                duration: durationStr,
+                timestamp: Date.now()
+            };
+
+            if (db) {
+                db.ref("chats/" + selectedGroupId).push(newMsg).catch((err) => {
+                    console.error("Error details:", err);
+                    showToast("Failed to send voice message!");
+                });
+            } else {
+                newMsg.id = 'msg_' + Date.now();
+                messagesStore.push(newMsg);
+                renderMessages();
+            }
+        }
+
+        function togglePlayAudio(base64Data, iconElement) {
+            if (activeAudio && activePlayIcon === iconElement) {
+                if (!activeAudio.paused) {
+                    activeAudio.pause();
+                    iconElement.className = "fa-solid fa-play";
+                } else {
+                    activeAudio.play();
+                    iconElement.className = "fa-solid fa-pause";
+                }
+                return;
+            }
+
+            if (activeAudio) {
+                activeAudio.pause();
+                activeAudio.currentTime = 0;
+                if (activePlayIcon) activePlayIcon.className = "fa-solid fa-play";
+            }
+
+            activeAudio = new Audio(base64Data);
+            activePlayIcon = iconElement;
+
+            iconElement.className = "fa-solid fa-pause";
+            activeAudio.play().catch((err) => {
+                console.error("Error details:", err);
+                showToast("Failed to play audio!");
+            });
+
+            activeAudio.onended = () => {
+                iconElement.className = "fa-solid fa-play";
+                activeAudio = null;
+                activePlayIcon = null;
+            };
+        }
+
+        function handleSendMessage() {
+            if (!currentUser) return;
+            const input = document.getElementById('chat-text-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const newMsg = {
+                type: 'text',
+                senderEmail: currentUser.email,
+                senderName: currentUser.username,
+                text: text,
+                timestamp: Date.now()
+            };
+
+            if (db) {
+                db.ref("chats/" + selectedGroupId).push(newMsg).catch((err) => {
+                    console.error("Error details:", err);
+                    showToast("Failed to send message!");
+                });
+            } else {
+                newMsg.id = 'msg_' + Date.now();
+                messagesStore.push(newMsg);
+                renderMessages();
+            }
+
+            input.value = '';
+            localStorage.removeItem(DRAFT_TEXT_KEY + selectedGroupId);
+        }
+
+        function openMessageOptionsModal(msgId, msgType) {
+            activeMessageId = msgId;
+            const copyBtn = document.getElementById('copy-option-btn');
+            if (msgType === 'audio') {
+                copyBtn.style.display = 'none';
+            } else {
+                copyBtn.style.display = 'block';
+            }
+            document.getElementById('message-options-modal').classList.add('active');
+        }
+
+        function closeMessageOptionsModal() {
+            document.getElementById('message-options-modal').classList.remove('active');
+            activeMessageId = null;
+        }
+
+        function handleCopyMessageText() {
+            const msg = messagesStore.find(m => m.id === activeMessageId);
+            if (msg && msg.text) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(msg.text).then(() => {
+                        showToast("Text copied!");
+                    }).catch((err) => {
+                        console.error("Error details:", err);
+                        showToast("Failed to copy text!");
+                    });
+                } else {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = msg.text;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        showToast("Text copied!");
+                    } catch (err) {
+                        showToast("Failed to copy text!");
+                    }
+                    document.body.removeChild(textArea);
+                }
+            }
+            closeMessageOptionsModal();
+        }
+
+        function handleDeleteMessage() {
+            if (activeAudio) {
+                activeAudio.pause();
+                activeAudio = null;
+            }
+            if (db && activeMessageId) {
+                db.ref("chats/" + selectedGroupId + "/" + activeMessageId).remove().catch((err) => {
+                    console.error("Error details:", err);
+                    showToast("Failed to delete message!");
+                });
+            } else {
+                const idx = messagesStore.findIndex(m => m.id === activeMessageId);
+                if (idx !== -1) {
+                    messagesStore.splice(idx, 1);
+                    renderMessages();
+                }
+            }
+            showToast("Deleted!");
+            closeMessageOptionsModal();
+        }
+
+        function updateProfileUI() {
+            if (!currentUser) return;
+            document.getElementById('prof-username').innerText = currentUser.username;
+        }
+
+        function openEditProfileModal() {
+            document.getElementById('edit-name-display').innerText = currentUser.username;
+            document.getElementById('inline-new-name-input').value = '';
+            document.getElementById('edit-profile-modal').classList.add('active');
+        }
+
+        function closeEditProfileModal() { 
+            document.getElementById('inline-new-name-input').value = '';
+            document.getElementById('edit-profile-modal').classList.remove('active'); 
+        }
+
+        function handleSaveProfile() {
+            if (!currentUser) return;
+            const newName = document.getElementById('inline-new-name-input').value.trim();
+            
+            if (!newName) {
+                closeEditProfileModal();
+                return;
+            }
+
+            if (db) {
+                db.ref('users/' + currentUser.uid + '/username').set(newName).then(() => {
+                    currentUser.username = newName;
+                    localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(currentUser));
+                    updateProfileUI();
+                    closeEditProfileModal();
+                    showToast("Name Updated!");
+                }).catch((err) => {
+                    console.error("Error details:", err);
+                    showToast("Failed to update name!");
+                });
+            } else {
+                currentUser.username = newName;
+                localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(currentUser));
+                updateProfileUI();
+                closeEditProfileModal();
+                showToast("Name Updated!");
+            }
+        }
+
+        function openMenuModal() { document.getElementById('menu-modal').classList.add('active'); }
+        function closeMenuModal() { document.getElementById('menu-modal').classList.remove('active'); }
+
+        function handleLogout() {
+            if (auth) {
+                auth.signOut().then(() => {
+                    localStorage.removeItem(LOCAL_USER_KEY);
+                    closeMenuModal();
+                    showToast("Logged out!");
+                }).catch((err) => {
+                    console.error("Error details:", err);
+                    showToast("Logout failed!");
+                });
+            }
+        }
+
+        function openDeleteAccountModal() {
+            closeMenuModal();
+            document.getElementById('del-email').value = '';
+            document.getElementById('del-password').value = '';
+            document.getElementById('delete-account-modal').classList.add('active');
+        }
+
+        function closeDeleteAccountModal() { 
+            document.getElementById('del-email').value = '';
+            document.getElementById('del-password').value = '';
+            document.getElementById('delete-account-modal').classList.remove('active'); 
+        }
+
+        function handleDeleteAccount() {
+            const email = document.getElementById('del-email').value.trim().toLowerCase();
+            const password = document.getElementById('del-password').value.trim();
+
+            if (!auth.currentUser) return;
+
+            const credential = firebase.auth.EmailAuthProvider.credential(email, password);
+            auth.currentUser.reauthenticateWithCredential(credential)
+                .then(() => {
+                    return auth.currentUser.delete();
+                })
+                .then(() => {
+                    localStorage.removeItem(LOCAL_USER_KEY);
+                    closeDeleteAccountModal();
+                    showToast("Account Deleted!");
+                })
+                .catch((error) => {
+                    console.error("Error details:", error);
+                    showToast(error.message || "Failed to delete!");
+                });
+        }
+    </script>
+</body>
+</html>
